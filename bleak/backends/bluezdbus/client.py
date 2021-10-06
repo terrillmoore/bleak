@@ -9,7 +9,7 @@ import os
 import re
 import subprocess
 import warnings
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Container, Dict, List, Optional, Union
 from uuid import UUID
 
 from dbus_next.aio import MessageBus
@@ -44,6 +44,7 @@ class BleakClientBlueZDBus(BaseBleakClient):
 
     Args:
         address_or_ble_device (`BLEDevice` or str): The Bluetooth address of the BLE peripheral to connect to or the `BLEDevice` object representing it.
+        services: Optional list of service UUIDs that will be used.
 
     Keyword Args:
         timeout (float): Timeout for required ``BleakScanner.find_device_by_address`` call. Defaults to 10.0.
@@ -53,8 +54,15 @@ class BleakClientBlueZDBus(BaseBleakClient):
         adapter (str): Bluetooth adapter to use for discovery.
     """
 
-    def __init__(self, address_or_ble_device: Union[BLEDevice, str], **kwargs):
-        super(BleakClientBlueZDBus, self).__init__(address_or_ble_device, **kwargs)
+    def __init__(
+        self,
+        address_or_ble_device: Union[BLEDevice, str],
+        services: Optional[Container[str]] = None,
+        **kwargs,
+    ):
+        super(BleakClientBlueZDBus, self).__init__(
+            address_or_ble_device, services, **kwargs
+        )
         # kwarg "device" is for backwards compatibility
         self._adapter = kwargs.get("adapter", kwargs.get("device", "hci0"))
 
@@ -257,7 +265,10 @@ class BleakClientBlueZDBus(BaseBleakClient):
 
                     if defs.GATT_SERVICE_INTERFACE in interfaces:
                         obj = unpack_variants(interfaces[defs.GATT_SERVICE_INTERFACE])
-                        self.services.add_service(BleakGATTServiceBlueZDBus(obj, path))
+                        if obj["UUID"] in self._requested_services:
+                            self.services.add_service(
+                                BleakGATTServiceBlueZDBus(obj, path)
+                            )
 
                     if defs.GATT_CHARACTERISTIC_INTERFACE in interfaces:
                         obj = unpack_variants(
@@ -1046,7 +1057,8 @@ class BleakClientBlueZDBus(BaseBleakClient):
                 obj = unpack_variants(interfaces[defs.GATT_SERVICE_INTERFACE])
                 # if this assert fails, it means our match rules are probably wrong
                 assert obj["Device"] == self._device_path
-                self.services.add_service(BleakGATTServiceBlueZDBus(obj, path))
+                if obj["UUID"] in self._requested_services:
+                    self.services.add_service(BleakGATTServiceBlueZDBus(obj, path))
 
             if defs.GATT_CHARACTERISTIC_INTERFACE in interfaces:
                 obj = unpack_variants(interfaces[defs.GATT_CHARACTERISTIC_INTERFACE])

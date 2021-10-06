@@ -8,7 +8,7 @@ Created on 2018-04-23 by hbldh <henrik.blidh@nedomkull.com>
 import abc
 import asyncio
 import uuid
-from typing import Callable, Optional, Union
+from typing import Callable, Iterable, Optional, Union
 from warnings import warn
 
 from bleak.backends.service import BleakGATTServiceCollection
@@ -23,6 +23,7 @@ class BaseBleakClient(abc.ABC):
 
     Args:
         address_or_ble_device (`BLEDevice` or str): The Bluetooth address of the BLE peripheral to connect to or the `BLEDevice` object representing it.
+        services: Optional list of service UUIDs that will be used.
 
     Keyword Args:
         timeout (float): Timeout for required ``discover`` call. Defaults to 10.0.
@@ -31,11 +32,22 @@ class BaseBleakClient(abc.ABC):
             argument, which will be this client object.
     """
 
-    def __init__(self, address_or_ble_device: Union[BLEDevice, str], **kwargs):
+    def __init__(
+        self,
+        address_or_ble_device: Union[BLEDevice, str],
+        services: Optional[Iterable[str]] = None,
+        **kwargs
+    ):
         if isinstance(address_or_ble_device, BLEDevice):
             self.address = address_or_ble_device.address
         else:
             self.address = address_or_ble_device
+
+        # An optional list of service UUIDs that are to be used -- all other
+        # services will be ignored/hidden. If None, all services will be enumerated.
+        self._requested_services = (
+            None if services is None else list(str(uuid.UUID(s)) for s in services)
+        )
 
         self.services = BleakGATTServiceCollection()
 

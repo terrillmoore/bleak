@@ -17,6 +17,8 @@ Added
 * Added ``register_uuids()`` to augment the uuid-to-description mapping.
 * Added support for Python 3.10.
 * Added ``force_indicate`` keyword argument for WinRT backend client's ``start_notify`` method. Fixes #526.
+* Added optional ``services`` argument to ``BleakClient()`` to filter services
+  that will be used.
 
 Changed
 ~~~~~~~

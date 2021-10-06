@@ -10,7 +10,7 @@ import logging
 import asyncio
 import uuid
 from functools import wraps
-from typing import Callable, Any, List, Optional, Sequence, Union
+from typing import Callable, Any, Container, List, Optional, Sequence, Union
 
 from bleak_winrt.windows.devices.bluetooth import (
     BluetoothLEDevice,
@@ -107,6 +107,7 @@ class BleakClientWinRT(BaseBleakClient):
 
     Args:
         address_or_ble_device (`BLEDevice` or str): The Bluetooth address of the BLE peripheral to connect to or the `BLEDevice` object representing it.
+        services: Optional list of service UUIDs that will be used.
 
     Keyword Args:
         use_cached (bool): If set to `True`, then the OS level BLE cache is used for
@@ -115,8 +116,15 @@ class BleakClientWinRT(BaseBleakClient):
 
     """
 
-    def __init__(self, address_or_ble_device: Union[BLEDevice, str], **kwargs):
-        super(BleakClientWinRT, self).__init__(address_or_ble_device, **kwargs)
+    def __init__(
+        self,
+        address_or_ble_device: Union[BLEDevice, str],
+        services: Optional[Container[str]] = None,
+        **kwargs,
+    ):
+        super(BleakClientWinRT, self).__init__(
+            address_or_ble_device, services, **kwargs
+        )
 
         # Backend specific. WinRT objects.
         if isinstance(address_or_ble_device, BLEDevice):
@@ -430,15 +438,27 @@ class BleakClientWinRT(BaseBleakClient):
             return self.services
         else:
             logger.debug("Get Services...")
-            services: Sequence[GattDeviceService] = _ensure_success(
-                await self._requester.get_gatt_services_async(
-                    BluetoothCacheMode.CACHED
-                    if use_cached
-                    else BluetoothCacheMode.UNCACHED
-                ),
-                "services",
-                "Could not get GATT services",
+            cache_mode = (
+                BluetoothCacheMode.CACHED if use_cached else BluetoothCacheMode.UNCACHED
             )
+            if self._requested_services is None:
+                services: Sequence[GattDeviceService] = _ensure_success(
+                    await self._requester.get_gatt_services_async(cache_mode),
+                    "services",
+                    "Could not get GATT services",
+                )
+            else:
+                services = []
+                for s in map(uuid.UUID, self._requested_services):
+                    services.extend(
+                        _ensure_success(
+                            await self._requester.get_gatt_services_for_uuid_async(
+                                s, cache_mode
+                            ),
+                            "services",
+                            "Could not get GATT services for {s}",
+                        )
+                    )
 
             for service in services:
                 self.services.add_service(BleakGATTServiceWinRT(service))

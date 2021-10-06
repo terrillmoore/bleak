@@ -9,7 +9,7 @@ Created by kevincar <kevincarrolldavis@gmail.com>
 import asyncio
 import itertools
 import logging
-from typing import Callable, Any, Dict, Iterable, NewType, Optional
+from typing import Callable, Any, Collection, Dict, Iterable, NewType, Optional
 
 import objc
 from Foundation import NSNumber, NSObject, NSArray, NSData, NSError, NSUUID
@@ -19,6 +19,7 @@ from CoreBluetooth import (
     CBCharacteristic,
     CBDescriptor,
     CBCharacteristicWriteWithResponse,
+    CBUUID,
 )
 
 from bleak.exc import BleakError
@@ -85,13 +86,19 @@ class PeripheralDelegate(NSObject):
         )
 
     @objc.python_method
-    async def discover_services(self, use_cached: bool = True) -> NSArray:
+    async def discover_services(
+        self, services: Collection[str], use_cached: bool = True
+    ) -> NSArray:
         if self._services_discovered_future.done() and use_cached:
             return self.peripheral.services()
 
         future = self._event_loop.create_future()
         self._services_discovered_future = future
-        self.peripheral.discoverServices_(None)
+        if services is not None:
+            services = NSArray.alloc().initWithArray_(
+                list(map(CBUUID.UUIDWithString_, services))
+            )
+        self.peripheral.discoverServices_(services)
         await future
 
         return self.peripheral.services()

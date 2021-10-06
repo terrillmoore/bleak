@@ -7,7 +7,7 @@ import asyncio
 import inspect
 import logging
 import uuid
-from typing import Callable, Optional, Union
+from typing import Callable, Container, Optional, Union
 
 from Foundation import NSArray, NSData
 from CoreBluetooth import (
@@ -41,14 +41,22 @@ class BleakClientCoreBluetooth(BaseBleakClient):
 
     Args:
         address_or_ble_device (`BLEDevice` or str): The Bluetooth address of the BLE peripheral to connect to or the `BLEDevice` object representing it.
+        services: Optional list of service UUIDs that will be used.
 
     Keyword Args:
         timeout (float): Timeout for required ``BleakScanner.find_device_by_address`` call. Defaults to 10.0.
 
     """
 
-    def __init__(self, address_or_ble_device: Union[BLEDevice, str], **kwargs):
-        super(BleakClientCoreBluetooth, self).__init__(address_or_ble_device, **kwargs)
+    def __init__(
+        self,
+        address_or_ble_device: Union[BLEDevice, str],
+        services: Optional[Container[str]] = None,
+        **kwargs
+    ):
+        super(BleakClientCoreBluetooth, self).__init__(
+            address_or_ble_device, services, **kwargs
+        )
 
         self._peripheral: Optional[CBPeripheral] = None
         self._delegate: Optional[PeripheralDelegate] = None
@@ -196,7 +204,7 @@ class BleakClientCoreBluetooth(BaseBleakClient):
             return self.services
 
         logger.debug("Retrieving services...")
-        services = await self._delegate.discover_services()
+        services = await self._delegate.discover_services(self._requested_services)
 
         for service in services:
             serviceUUID = service.UUID().UUIDString()
