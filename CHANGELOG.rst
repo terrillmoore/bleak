@@ -20,6 +20,11 @@ Changed
   To use the cache, call ``connect`` and ``get_services`` with the ``dangerous_use_bleak_cache``
   argument to avoid services being resolved again.
 * Added deprecation warning to ``discover()`` method.
+* ``BleakScanner`` and ``BleakClient`` are now concrete classes. Fixes #582.
+* Deprecated ``BleakScanner.register_detection_callback()``.
+* Deprecated ``BleakScanner.set_scanning_filter()``.
+* Deprecated ``BleakClient.set_disconnected_callback()``.
+* Deprecated ``BleakClient.get_services()``.
 
 Fixed
 -----
