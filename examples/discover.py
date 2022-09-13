@@ -16,7 +16,7 @@ from bleak import BleakScanner
 async def main():
     devices = await BleakScanner.discover()
     for d in devices:
-        print(d)
+        print(d, f"\tRSSI: {d.rssi} dB")
 
 
 if __name__ == "__main__":
